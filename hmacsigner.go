@@ -1,4 +1,4 @@
-// Package hmacsigner provides signed blob.
+// Package hmacsigner provides signed blobs.
 //
 // It is:
 // 1) Not future proof.
