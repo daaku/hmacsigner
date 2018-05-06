@@ -1,8 +1,10 @@
 package hmacsigner
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -106,4 +108,39 @@ func TestTimeNowDefault(t *testing.T) {
 func TestSaltDefault(t *testing.T) {
 	var out [8]byte
 	(&Signer{}).salt(out[:])
+}
+
+func BenchmarkGen(b *testing.B) {
+	givenPayload := []byte("a@b.c")
+	signer := Signer{
+		Key: []byte("1234567890"),
+		TTL: time.Hour,
+	}
+	expectedSuffix := []byte("LmM")
+
+	for i := 0; i < b.N; i++ {
+		gen := signer.Gen(givenPayload)
+		if !bytes.HasSuffix(gen, expectedSuffix) {
+			b.Fatal("did not find expected suffix", fmt.Sprintf("%s", gen))
+		}
+	}
+}
+
+func BenchmarkParse(b *testing.B) {
+	givenPayload := []byte("a@b.c")
+	signer := Signer{
+		Key: []byte("1234567890"),
+		TTL: time.Hour,
+	}
+	data := signer.Gen(givenPayload)
+
+	for i := 0; i < b.N; i++ {
+		actual, err := signer.Parse(data)
+		if err != nil {
+			b.Fatal("parse error", err)
+		}
+		if !bytes.Equal(actual, givenPayload) {
+			b.Fatal("actual not as expected", actual)
+		}
+	}
 }
