@@ -1,4 +1,4 @@
-hmacsigner [![Build Status](https://secure.travis-ci.org/daaku/hmacsigner.png)](http://travis-ci.org/daaku/hmacsigner)
+hmacsigner [![Build Status](https://secure.travis-ci.org/daaku/hmacsigner.png)](http://travis-ci.org/daaku/hmacsigner) [![GoDoc](https://godoc.org/github.com/daaku/hmacsigner?status.svg)](https://godoc.org/github.com/daaku/hmacsigner)
 ==========
 
 Documentation: https://godoc.org/github.com/daaku/hmacsigner

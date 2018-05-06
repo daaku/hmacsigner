@@ -1,9 +1,13 @@
 // Package hmacsigner provides signed blobs.
 //
 // It is:
+//
 // 1) Not future proof.
+//
 // 2) Forces HMAC-SHA256 signatures.
+//
 // 3) Forces 8 byte nanosecond unix timestamp.
+//
 // 4) Forces 8 byte salt.
 package hmacsigner
 
