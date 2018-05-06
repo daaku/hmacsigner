@@ -51,30 +51,43 @@ func TestErrors(t *testing.T) {
 	validTS := base64.RawURLEncoding.EncodeToString(ts[:])
 
 	cases := []struct {
+		Name string
 		Data []byte
 		Err  error
 	}{
 		{
+			Name: "nil data",
 			Data: nil,
 			Err:  ErrTooShort,
 		},
 		{
+			Name: "invalid ts encoding",
 			Data: []byte(strings.Repeat("$", encLen+10)),
 			Err:  ErrInvalidEncoding,
 		},
 		{
+			Name: "ts expired",
 			Data: []byte("AAAAAAAAAAA" + strings.Repeat("$", encLen+10)),
 			Err:  ErrTimestampExpired,
 		},
 		{
+			Name: "invalid salt encoding",
 			Data: []byte(validTS + strings.Repeat("$", encLen+10)),
 			Err:  ErrInvalidEncoding,
 		},
 		{
-			Data: []byte(validTS + strings.Repeat("A", encSigLen+encSaltLen) + "$"),
+			Name: "invalid sig encoding",
+			Data: []byte(validTS +
+				strings.Repeat("A", encSaltLen) + strings.Repeat("$", encLen+10)),
+			Err: ErrInvalidEncoding,
+		},
+		{
+			Name: "invalid payload encoding",
+			Data: []byte(validTS + strings.Repeat("A", encSigLen+encSigLen) + "$"),
 			Err:  ErrInvalidEncoding,
 		},
 		{
+			Name: "invalid signature",
 			Data: []byte(validTS + strings.Repeat("A", encLen+20)),
 			Err:  ErrSignatureMismatch,
 		},
@@ -82,6 +95,15 @@ func TestErrors(t *testing.T) {
 
 	for _, c := range cases {
 		_, err := signer.Parse(c.Data)
-		ensure.DeepEqual(t, err, c.Err)
+		ensure.DeepEqual(t, err, c.Err, c.Name)
 	}
+}
+
+func TestTimeNowDefault(t *testing.T) {
+	ensure.NotNil(t, (&Signer{}).now())
+}
+
+func TestSaltDefault(t *testing.T) {
+	var out [8]byte
+	(&Signer{}).salt(out[:])
 }
