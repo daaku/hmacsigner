@@ -18,7 +18,7 @@ func TestSigner(t *testing.T) {
 	givenSalt := [saltLen]byte{0, 1, 2, 3, 4, 5, 6, 7}
 	signer := Signer{
 		Key:   []byte("1234567890"),
-		TTL:   time.Now().Sub(givenIssue) + time.Hour,
+		TTL:   time.Since(givenIssue) + time.Hour,
 		nowF:  func() time.Time { return givenIssue },
 		saltF: func(b []byte) { copy(b, givenSalt[:]) },
 	}
@@ -45,7 +45,7 @@ func TestErrors(t *testing.T) {
 	givenIssue := time.Unix(0, time.Hour.Nanoseconds())
 	signer := Signer{
 		Key: []byte("1234567890"),
-		TTL: time.Now().Sub(givenIssue) + time.Hour,
+		TTL: time.Since(givenIssue) + time.Hour,
 	}
 
 	var ts [8]byte
