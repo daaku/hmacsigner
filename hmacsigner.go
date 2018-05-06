@@ -43,10 +43,18 @@ var (
 type Signer struct {
 	Key []byte
 	TTL time.Duration
+
+	nowF func() time.Time
 }
 
-// Sign returns the signature for the given payload and issue time.
-func (s *Signer) Sign(payload []byte, issue time.Time) []byte {
+func (s *Signer) now() time.Time {
+	if s.nowF == nil {
+		return time.Now()
+	}
+	return s.nowF()
+}
+
+func (s *Signer) sign(payload []byte, issue time.Time) []byte {
 	mac := hmac.New(sha256.New, s.Key)
 	mac.Write(payload)
 	io.WriteString(mac, strconv.FormatInt(issue.UnixNano(), 10))
@@ -54,50 +62,51 @@ func (s *Signer) Sign(payload []byte, issue time.Time) []byte {
 }
 
 // Gen returns the signed and timestamped payload.
-func (s *Signer) Gen(payload []byte, issue time.Time) []byte {
+func (s *Signer) Gen(payload []byte) []byte {
+	issue := s.now()
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
 	blob := make([]byte, payloadEncLen+encLen)
 	var ts [8]byte
 	binary.LittleEndian.PutUint64(ts[:], uint64(issue.UnixNano()))
 	base64.RawURLEncoding.Encode(blob, ts[:])
-	base64.RawURLEncoding.Encode(blob[encTsLen:], s.Sign(payload, issue))
+	base64.RawURLEncoding.Encode(blob[encTsLen:], s.sign(payload, issue))
 	base64.RawURLEncoding.Encode(blob[encLen:], payload)
 	return blob
 }
 
-// Parse returns the original payload and timestamp. It verifies the signature
-// and ensures the TTL is respected.
-func (s *Signer) Parse(b []byte) ([]byte, time.Time, error) {
+// Parse returns the original payload. It verifies the signature and
+// ensures the TTL is respected.
+func (s *Signer) Parse(b []byte) ([]byte, error) {
 	if len(b) < encLen+1 {
-		return nil, time.Time{}, ErrTooShort
+		return nil, ErrTooShort
 	}
 
 	var tsB [8]byte
 	_, err := base64.RawURLEncoding.Decode(tsB[:], b[:encTsLen])
 	if err != nil {
-		return nil, time.Time{}, ErrTimestampInvalid
+		return nil, ErrTimestampInvalid
 	}
 	ts := int64(binary.LittleEndian.Uint64(tsB[:]))
 	issue := time.Unix(0, ts)
 	if issue.Add(s.TTL).Before(time.Now()) {
-		return nil, issue, ErrTimestampExpired
+		return nil, ErrTimestampExpired
 	}
 
 	var sig [sha256.Size]byte
 	_, err = base64.RawURLEncoding.Decode(sig[:], b[encTsLen:encLen])
 	if err != nil {
-		return nil, issue, ErrSignatureInvalid
+		return nil, ErrSignatureInvalid
 	}
 
 	payload := make([]byte, base64.RawURLEncoding.DecodedLen(len(b)-encLen))
 	n, err := base64.RawURLEncoding.Decode(payload, b[encLen:])
 	if err != nil {
-		return nil, issue, ErrPayloadInvalid
+		return nil, ErrPayloadInvalid
 	}
 	payload = payload[:n]
 
-	if !hmac.Equal(s.Sign(payload, issue), sig[:]) {
-		return nil, issue, ErrSignatureMismatch
+	if !hmac.Equal(s.sign(payload, issue), sig[:]) {
+		return nil, ErrSignatureMismatch
 	}
-	return payload, issue, nil
+	return payload, nil
 }

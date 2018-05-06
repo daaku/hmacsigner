@@ -14,8 +14,9 @@ func TestSigner(t *testing.T) {
 	givenPayload := []byte("a@b.c")
 	givenIssue := time.Unix(0, 0)
 	signer := Signer{
-		Key: []byte("1234567890"),
-		TTL: time.Now().Sub(givenIssue) + time.Hour,
+		Key:  []byte("1234567890"),
+		TTL:  time.Now().Sub(givenIssue) + time.Hour,
+		nowF: func() time.Time { return givenIssue },
 	}
 
 	expectedSig := []byte{
@@ -24,16 +25,15 @@ func TestSigner(t *testing.T) {
 		0xD1, 0x65, 0x24, 0xA4, 0x9C, 0x5A, 0xA6, 0x86,
 		0xD3, 0xAE, 0x9E, 0x9D, 0xC1, 0xED, 0x27, 0x4B,
 	}
-	ensure.DeepEqual(t, signer.Sign(givenPayload, givenIssue), expectedSig)
+	ensure.DeepEqual(t, signer.sign(givenPayload, givenIssue), expectedSig)
 
-	gen := signer.Gen(givenPayload, givenIssue)
+	gen := signer.Gen(givenPayload)
 	ensure.DeepEqual(t, string(gen),
 		"AAAAAAAAAAArx6fb1yC4eYMkF_gjTd6k9FlJKScWqaG066encHtJ0sYUBiLmM")
 
-	actualPayload, actualIssue, err := signer.Parse(gen)
+	actualPayload, err := signer.Parse(gen)
 	ensure.Nil(t, err)
 	ensure.DeepEqual(t, actualPayload, givenPayload)
-	ensure.DeepEqual(t, actualIssue, givenIssue)
 }
 
 func TestErrors(t *testing.T) {
@@ -78,7 +78,7 @@ func TestErrors(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		_, _, err := signer.Parse(c.Data)
+		_, err := signer.Parse(c.Data)
 		ensure.DeepEqual(t, err, c.Err)
 	}
 }
