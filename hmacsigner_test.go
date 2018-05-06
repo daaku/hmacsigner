@@ -13,23 +13,26 @@ import (
 func TestSigner(t *testing.T) {
 	givenPayload := []byte("a@b.c")
 	givenIssue := time.Unix(0, 0)
+	givenSalt := [saltLen]byte{0, 1, 2, 3, 4, 5, 6, 7}
 	signer := Signer{
-		Key:  []byte("1234567890"),
-		TTL:  time.Now().Sub(givenIssue) + time.Hour,
-		nowF: func() time.Time { return givenIssue },
+		Key:   []byte("1234567890"),
+		TTL:   time.Now().Sub(givenIssue) + time.Hour,
+		nowF:  func() time.Time { return givenIssue },
+		saltF: func(b []byte) { copy(b, givenSalt[:]) },
 	}
 
 	expectedSig := []byte{
-		0xAF, 0x1E, 0x9F, 0x6F, 0x5C, 0x82, 0xE1, 0xE6,
-		0x0C, 0x90, 0x5F, 0xE0, 0x8D, 0x37, 0x7A, 0x93,
-		0xD1, 0x65, 0x24, 0xA4, 0x9C, 0x5A, 0xA6, 0x86,
-		0xD3, 0xAE, 0x9E, 0x9D, 0xC1, 0xED, 0x27, 0x4B,
+		0xF4, 0xAB, 0x56, 0xF9, 0x73, 0x88, 0x18, 0xD7,
+		0x3F, 0x72, 0x03, 0xDD, 0x39, 0x56, 0xDF, 0xE5,
+		0x9C, 0x08, 0xAE, 0xAE, 0xF9, 0x8C, 0x49, 0x80,
+		0x11, 0x6D, 0xFD, 0x48, 0xB5, 0xEF, 0x52, 0x5D,
 	}
-	ensure.DeepEqual(t, signer.sign(givenPayload, givenIssue), expectedSig)
+	ensure.DeepEqual(t,
+		signer.sign(givenPayload, givenSalt, givenIssue), expectedSig)
 
 	gen := signer.Gen(givenPayload)
 	ensure.DeepEqual(t, string(gen),
-		"AAAAAAAAAAArx6fb1yC4eYMkF_gjTd6k9FlJKScWqaG066encHtJ0sYUBiLmM")
+		"AAAAAAAAAAAAAECAwQFBgc9KtW-XOIGNc_cgPdOVbf5ZwIrq75jEmAEW39SLXvUl0YUBiLmM")
 
 	actualPayload, err := signer.Parse(gen)
 	ensure.Nil(t, err)
@@ -57,7 +60,7 @@ func TestErrors(t *testing.T) {
 		},
 		{
 			Data: []byte(strings.Repeat("$", encLen+10)),
-			Err:  ErrTimestampInvalid,
+			Err:  ErrInvalidEncoding,
 		},
 		{
 			Data: []byte("AAAAAAAAAAA" + strings.Repeat("$", encLen+10)),
@@ -65,14 +68,14 @@ func TestErrors(t *testing.T) {
 		},
 		{
 			Data: []byte(validTS + strings.Repeat("$", encLen+10)),
-			Err:  ErrSignatureInvalid,
+			Err:  ErrInvalidEncoding,
 		},
 		{
-			Data: []byte(validTS + strings.Repeat("A", encSigLen) + "$"),
-			Err:  ErrPayloadInvalid,
+			Data: []byte(validTS + strings.Repeat("A", encSigLen+encSaltLen) + "$"),
+			Err:  ErrInvalidEncoding,
 		},
 		{
-			Data: []byte(validTS + strings.Repeat("A", encSigLen+10)),
+			Data: []byte(validTS + strings.Repeat("A", encLen+20)),
 			Err:  ErrSignatureMismatch,
 		},
 	}
