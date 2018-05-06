@@ -1,6 +1,10 @@
-// Package hmacsigner is a simple hmac only timestamped signed blob. It is
-// not futured proofed, it forces decisions on you like using sha256, a 8
-// byte salt, a 8 byte unix timestamp.
+// Package hmacsigner provides signed blob.
+//
+// It is:
+// 1) Not future proof.
+// 2) Forces HMAC-SHA256 signatures.
+// 3) Forces 8 byte nanosecond unix timestamp.
+// 4) Forces 8 byte salt.
 package hmacsigner
 
 import (
