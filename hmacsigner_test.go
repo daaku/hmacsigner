@@ -25,7 +25,7 @@ func TestSigner(t *testing.T) {
 
 	gen := signer.Gen(givenPayload)
 	ensure.DeepEqual(t, string(gen),
-		"AAAAAAAAAAAAAQIDBAUGB9jLMb8-Ey8EmPMUsZGwZrLydqsh-KhMZ0spLMAWMdknYUBiLmM")
+		"AQAAAAAAAAAAAAECAwQFBgccnyOnmh2t0YOuMjv4vUxPALpkI1q-V1a0vKqZRmc-6AYUBiLmM")
 
 	actualPayload, err := signer.Parse(gen)
 	ensure.Nil(t, err)
@@ -39,9 +39,11 @@ func TestErrors(t *testing.T) {
 		TTL:    time.Since(givenIssue) + time.Hour,
 	}
 
+	validVersion := base64.RawURLEncoding.EncodeToString([]byte{version})
+
 	var ts [8]byte
 	binary.LittleEndian.PutUint64(ts[:], uint64(givenIssue.UnixNano()))
-	validTS := base64.RawURLEncoding.EncodeToString(ts[:])
+	validVTS := validVersion + base64.RawURLEncoding.EncodeToString(ts[:])
 
 	cases := []struct {
 		Name string
@@ -59,19 +61,25 @@ func TestErrors(t *testing.T) {
 			Err:  ErrInvalidEncoding,
 		},
 		{
-			Name: "ts expired",
+			Name: "invalid version",
 			Data: []byte(strings.Repeat("A", encHeaderLen)),
+			Err:  ErrInvalidVersion,
+		},
+		{
+			Name: "ts expired",
+			Data: []byte(validVersion + strings.Repeat("A", encHeaderLen)),
 			Err:  ErrTimestampExpired,
 		},
 		{
 			Name: "invalid payload encoding",
-			Data: []byte(validTS + strings.Repeat("A", encHeaderLen) + "$"),
+			Data: []byte(validVTS + strings.Repeat("A", encHeaderLen) + "$"),
 			Err:  ErrInvalidEncoding,
 		},
 		{
 			Name: "invalid signature",
-			Data: []byte(validTS + strings.Repeat("A", encHeaderLen+20)),
-			Err:  ErrSignatureMismatch,
+			Data: []byte(validVTS + base64.RawURLEncoding.EncodeToString(
+				bytes.Repeat([]byte("A"), encHeaderLen+20))),
+			Err: ErrSignatureMismatch,
 		},
 	}
 

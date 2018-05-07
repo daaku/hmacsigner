@@ -8,12 +8,13 @@ Documentation: https://godoc.org/github.com/daaku/hmacsigner
 Package hmacsigner provides signed blobs.
 
 It is:
-1. Not future proof.
-1. Forces a Secret of at least 32 bytes.
-1. Forces HMAC-SHA256 signatures.
-1. Forces 8 byte nanosecond unix timestamp.
-1. Forces 8 byte salt.
-1. Forces URL safe Base64 encoding.
+1. Includes a version.
+1. Includes 8 byte nanosecond unix timestamp.
+1. Includes 8 byte salt.
+1. Requires a Secret of at least 32 bytes.
+1. Does not encrypt the payload.
+1. Enforces HMAC-SHA256 signatures.
+1. Outputs URL safe Base64 encoding.
 
 ## Usage
 
@@ -21,6 +22,9 @@ It is:
 var (
 	// ErrTooShort indicates the data to parse is too short to be valid.
 	ErrTooShort = errors.New("hmacsigner: too short")
+
+	// ErrInvalidVersion indicates the version was invalid.
+	ErrInvalidVersion = errors.New("hmacsigner: invalid version")
 
 	// ErrInvalidEncoding indicates the encoding is invalid.
 	ErrInvalidEncoding = errors.New("hmacsigner: invalid encoding")
