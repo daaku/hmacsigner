@@ -117,7 +117,7 @@ func (s *Signer) Gen(payload []byte) []byte {
 // Parse returns the original payload. It verifies the signature and
 // ensures the TTL is respected.
 func (s *Signer) Parse(b []byte) ([]byte, error) {
-	if len(b) < encLen+1 {
+	if len(b) < encLen {
 		return nil, ErrTooShort
 	}
 
@@ -145,12 +145,15 @@ func (s *Signer) Parse(b []byte) ([]byte, error) {
 		return nil, ErrInvalidEncoding
 	}
 
-	payload := make([]byte, base64.RawURLEncoding.DecodedLen(len(b)-encLen))
-	n, err := base64.RawURLEncoding.Decode(payload, b[encLen:])
-	if err != nil {
-		return nil, ErrInvalidEncoding
+	var payload []byte
+	if payloadLen := len(b) - encLen; payloadLen > 0 {
+		payload = make([]byte, base64.RawURLEncoding.DecodedLen(payloadLen))
+		n, err := base64.RawURLEncoding.Decode(payload, b[encLen:])
+		if err != nil {
+			return nil, ErrInvalidEncoding
+		}
+		payload = payload[:n]
 	}
-	payload = payload[:n]
 
 	if !hmac.Equal(s.sign(payload, scratch, issue), sig[:]) {
 		return nil, ErrSignatureMismatch

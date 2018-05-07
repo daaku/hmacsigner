@@ -115,6 +115,17 @@ func TestMinSecretLen(t *testing.T) {
 	(&Signer{}).Gen([]byte("foo"))
 }
 
+func TestNilPayload(t *testing.T) {
+	signer := Signer{
+		Secret: bytes.Repeat([]byte("a"), 32),
+		TTL:    time.Hour,
+	}
+	out := signer.Gen(nil)
+	orig, err := signer.Parse(out)
+	ensure.Nil(t, err)
+	ensure.True(t, orig == nil, orig)
+}
+
 func BenchmarkGen(b *testing.B) {
 	givenPayload := []byte("a@b.c")
 	signer := Signer{
