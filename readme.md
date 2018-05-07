@@ -1,4 +1,4 @@
-hmacsigner [![Build Status](https://secure.travis-ci.org/daaku/hmacsigner.png)](http://travis-ci.org/daaku/hmacsigner) [![GoDoc](https://godoc.org/github.com/daaku/hmacsigner?status.svg)](https://godoc.org/github.com/daaku/hmacsigner) [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](blob/master/license)
+hmacsigner [![Build Status](https://secure.travis-ci.org/daaku/hmacsigner.png)](http://travis-ci.org/daaku/hmacsigner) [![GoDoc](https://godoc.org/github.com/daaku/hmacsigner?status.svg)](https://godoc.org/github.com/daaku/hmacsigner) [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](license)
 ==========
 
     import "github.com/daaku/hmacsigner"
