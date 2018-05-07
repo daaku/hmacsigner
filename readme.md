@@ -7,7 +7,7 @@ Documentation: https://godoc.org/github.com/daaku/hmacsigner
 
 Package hmacsigner provides signed blobs.
 
-It is:
+It:
 1. Includes a version.
 1. Includes 8 byte nanosecond unix timestamp.
 1. Includes 8 byte salt.

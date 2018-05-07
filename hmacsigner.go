@@ -1,6 +1,6 @@
 // Package hmacsigner provides signed blobs.
 //
-// It is:
+// It:
 //
 // 1) Includes a version.
 //
