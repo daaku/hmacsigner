@@ -95,21 +95,25 @@ func (s *Signer) Gen(payload []byte) []byte {
 	if len(s.Secret) < minSecretLen {
 		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
 	}
-	issue := s.now()
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
 	blob := make([]byte, payloadEncLen+encLen)
+	next := blob[:]
 	var scratch [8]byte
 
+	issue := s.now()
 	binary.LittleEndian.PutUint64(scratch[:], uint64(issue.UnixNano()))
-	base64.RawURLEncoding.Encode(blob, scratch[:])
+	base64.RawURLEncoding.Encode(next, scratch[:])
+	next = next[encTsLen:]
 
 	s.salt(scratch[:])
-	base64.RawURLEncoding.Encode(blob[encTsLen:], scratch[:])
+	base64.RawURLEncoding.Encode(next, scratch[:])
+	next = next[encSaltLen:]
 
 	sig := s.sign(payload, scratch, issue)
-	base64.RawURLEncoding.Encode(blob[encTsLen+encSaltLen:], sig)
+	base64.RawURLEncoding.Encode(next, sig)
+	next = next[encSigLen:]
 
-	base64.RawURLEncoding.Encode(blob[encLen:], payload)
+	base64.RawURLEncoding.Encode(next, payload)
 	return blob
 }
 
@@ -130,24 +134,25 @@ func (s *Signer) Parse(b []byte) ([]byte, error) {
 	if issue.Add(s.TTL).Before(time.Now()) {
 		return nil, ErrTimestampExpired
 	}
+	b = b[encTsLen:]
 
-	_, err = base64.RawURLEncoding.Decode(
-		scratch[:], b[encTsLen:encTsLen+encSaltLen])
+	_, err = base64.RawURLEncoding.Decode(scratch[:], b[:encSaltLen])
 	if err != nil {
 		return nil, ErrInvalidEncoding
 	}
+	b = b[encSaltLen:]
 
 	var sig [sha256.Size]byte
-	_, err = base64.RawURLEncoding.Decode(
-		sig[:], b[encTsLen+encSaltLen:encLen])
+	_, err = base64.RawURLEncoding.Decode(sig[:], b[:encSigLen])
 	if err != nil {
 		return nil, ErrInvalidEncoding
 	}
+	b = b[encSigLen:]
 
 	var payload []byte
-	if payloadLen := len(b) - encLen; payloadLen > 0 {
+	if payloadLen := len(b); payloadLen > 0 {
 		payload = make([]byte, base64.RawURLEncoding.DecodedLen(payloadLen))
-		n, err := base64.RawURLEncoding.Decode(payload, b[encLen:])
+		n, err := base64.RawURLEncoding.Decode(payload, b)
 		if err != nil {
 			return nil, ErrInvalidEncoding
 		}
