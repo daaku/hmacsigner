@@ -98,7 +98,7 @@ func (s *Signer) sign(
 // Gen returns the signed payload.
 func (s *Signer) Gen(payload []byte) []byte {
 	if len(s.Secret) < minSecretLen {
-		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
+		panic(fmt.Sprintf("secret less than %v bytes", minSecretLen))
 	}
 
 	var header [headerLen]byte
