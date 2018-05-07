@@ -17,24 +17,24 @@ func TestSigner(t *testing.T) {
 	givenIssue := time.Unix(0, 0)
 	givenSalt := [saltLen]byte{0, 1, 2, 3, 4, 5, 6, 7}
 	signer := Signer{
-		Key:   []byte("1234567890"),
-		TTL:   time.Since(givenIssue) + time.Hour,
-		nowF:  func() time.Time { return givenIssue },
-		saltF: func(b []byte) { copy(b, givenSalt[:]) },
+		Secret: bytes.Repeat([]byte("a"), 32),
+		TTL:    time.Since(givenIssue) + time.Hour,
+		nowF:   func() time.Time { return givenIssue },
+		saltF:  func(b []byte) { copy(b, givenSalt[:]) },
 	}
 
 	expectedSig := []byte{
-		0xF4, 0xAB, 0x56, 0xF9, 0x73, 0x88, 0x18, 0xD7,
-		0x3F, 0x72, 0x03, 0xDD, 0x39, 0x56, 0xDF, 0xE5,
-		0x9C, 0x08, 0xAE, 0xAE, 0xF9, 0x8C, 0x49, 0x80,
-		0x11, 0x6D, 0xFD, 0x48, 0xB5, 0xEF, 0x52, 0x5D,
+		0xD8, 0xCB, 0x31, 0xBF, 0x3E, 0x13, 0x2F, 0x04,
+		0x98, 0xF3, 0x14, 0xB1, 0x91, 0xB0, 0x66, 0xB2,
+		0xF2, 0x76, 0xAB, 0x21, 0xF8, 0xA8, 0x4C, 0x67,
+		0x4B, 0x29, 0x2C, 0xC0, 0x16, 0x31, 0xD9, 0x27,
 	}
 	ensure.DeepEqual(t,
 		signer.sign(givenPayload, givenSalt, givenIssue), expectedSig)
 
 	gen := signer.Gen(givenPayload)
 	ensure.DeepEqual(t, string(gen),
-		"AAAAAAAAAAAAAECAwQFBgc9KtW-XOIGNc_cgPdOVbf5ZwIrq75jEmAEW39SLXvUl0YUBiLmM")
+		"AAAAAAAAAAAAAECAwQFBgc2Msxvz4TLwSY8xSxkbBmsvJ2qyH4qExnSykswBYx2ScYUBiLmM")
 
 	actualPayload, err := signer.Parse(gen)
 	ensure.Nil(t, err)
@@ -44,8 +44,8 @@ func TestSigner(t *testing.T) {
 func TestErrors(t *testing.T) {
 	givenIssue := time.Unix(0, time.Hour.Nanoseconds())
 	signer := Signer{
-		Key: []byte("1234567890"),
-		TTL: time.Since(givenIssue) + time.Hour,
+		Secret: bytes.Repeat([]byte("a"), 32),
+		TTL:    time.Since(givenIssue) + time.Hour,
 	}
 
 	var ts [8]byte
@@ -110,11 +110,16 @@ func TestSaltDefault(t *testing.T) {
 	(&Signer{}).salt(out[:])
 }
 
+func TestMinSecretLen(t *testing.T) {
+	defer ensure.PanicDeepEqual(t, "key less than 32 bytes")
+	(&Signer{}).Gen([]byte("foo"))
+}
+
 func BenchmarkGen(b *testing.B) {
 	givenPayload := []byte("a@b.c")
 	signer := Signer{
-		Key: []byte("1234567890"),
-		TTL: time.Hour,
+		Secret: bytes.Repeat([]byte("a"), 32),
+		TTL:    time.Hour,
 	}
 	expectedSuffix := []byte("LmM")
 
@@ -129,8 +134,8 @@ func BenchmarkGen(b *testing.B) {
 func BenchmarkParse(b *testing.B) {
 	givenPayload := []byte("a@b.c")
 	signer := Signer{
-		Key: []byte("1234567890"),
-		TTL: time.Hour,
+		Secret: bytes.Repeat([]byte("a"), 32),
+		TTL:    time.Hour,
 	}
 	data := signer.Gen(givenPayload)
 

@@ -4,11 +4,15 @@
 //
 // 1) Not future proof.
 //
-// 2) Forces HMAC-SHA256 signatures.
+// 2) Forces a Secret of at least 32 bytes.
 //
-// 3) Forces 8 byte nanosecond unix timestamp.
+// 3) Forces HMAC-SHA256 signatures.
 //
-// 4) Forces 8 byte salt.
+// 4) Forces 8 byte nanosecond unix timestamp.
+//
+// 5) Forces 8 byte salt.
+//
+// 6) Forces URL safe Base64 encoding.
 package hmacsigner
 
 import (
@@ -18,15 +22,17 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"time"
 )
 
 const (
-	saltLen    = 8
-	encTsLen   = 11
-	encSaltLen = 11
-	encSigLen  = 43
-	encLen     = encTsLen + encSaltLen + encSigLen
+	saltLen      = 8
+	encTsLen     = 11
+	encSaltLen   = 11
+	encSigLen    = 43
+	encLen       = encTsLen + encSaltLen + encSigLen
+	minSecretLen = 32
 )
 
 var (
@@ -45,8 +51,8 @@ var (
 
 // Signer handles generating and parsing signed data.
 type Signer struct {
-	Key []byte
-	TTL time.Duration
+	Secret []byte        // Secret must be at least 32 bytes.
+	TTL    time.Duration // TTL must be non zero.
 
 	nowF  func() time.Time
 	saltF func([]byte)
@@ -77,7 +83,7 @@ func (s *Signer) sign(
 	var scratch [8]byte
 	binary.LittleEndian.PutUint64(scratch[:], uint64(issue.UnixNano()))
 
-	mac := hmac.New(sha256.New, s.Key)
+	mac := hmac.New(sha256.New, s.Secret)
 	mac.Write(scratch[:])
 	mac.Write(salt[:])
 	mac.Write(payload)
@@ -86,6 +92,10 @@ func (s *Signer) sign(
 
 // Gen returns the signed payload.
 func (s *Signer) Gen(payload []byte) []byte {
+	if len(s.Secret) < minSecretLen {
+		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
+	}
+	// TODO: ensure behavior with empty payload is acceptable
 	issue := s.now()
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
 	blob := make([]byte, payloadEncLen+encLen)
