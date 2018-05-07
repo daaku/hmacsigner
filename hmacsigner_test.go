@@ -23,18 +23,9 @@ func TestSigner(t *testing.T) {
 		saltF:  func(b []byte) { copy(b, givenSalt[:]) },
 	}
 
-	expectedSig := []byte{
-		0xD8, 0xCB, 0x31, 0xBF, 0x3E, 0x13, 0x2F, 0x04,
-		0x98, 0xF3, 0x14, 0xB1, 0x91, 0xB0, 0x66, 0xB2,
-		0xF2, 0x76, 0xAB, 0x21, 0xF8, 0xA8, 0x4C, 0x67,
-		0x4B, 0x29, 0x2C, 0xC0, 0x16, 0x31, 0xD9, 0x27,
-	}
-	ensure.DeepEqual(t,
-		signer.sign(givenPayload, givenSalt, givenIssue), expectedSig)
-
 	gen := signer.Gen(givenPayload)
 	ensure.DeepEqual(t, string(gen),
-		"AAAAAAAAAAAAAECAwQFBgc2Msxvz4TLwSY8xSxkbBmsvJ2qyH4qExnSykswBYx2ScYUBiLmM")
+		"AAAAAAAAAAAAAQIDBAUGB9jLMb8-Ey8EmPMUsZGwZrLydqsh-KhMZ0spLMAWMdknYUBiLmM")
 
 	actualPayload, err := signer.Parse(gen)
 	ensure.Nil(t, err)
@@ -63,29 +54,18 @@ func TestErrors(t *testing.T) {
 			Err:  ErrTooShort,
 		},
 		{
-			Name: "invalid ts encoding",
-			Data: []byte(strings.Repeat("$", encHeaderLen+10)),
+			Name: "invalid encoding",
+			Data: []byte(strings.Repeat("$", encHeaderLen)),
 			Err:  ErrInvalidEncoding,
 		},
 		{
 			Name: "ts expired",
-			Data: []byte("AAAAAAAAAAA" + strings.Repeat("$", encHeaderLen+10)),
+			Data: []byte(strings.Repeat("A", encHeaderLen)),
 			Err:  ErrTimestampExpired,
 		},
 		{
-			Name: "invalid salt encoding",
-			Data: []byte(validTS + strings.Repeat("$", encHeaderLen+10)),
-			Err:  ErrInvalidEncoding,
-		},
-		{
-			Name: "invalid sig encoding",
-			Data: []byte(validTS +
-				strings.Repeat("A", encSaltLen) + strings.Repeat("$", encHeaderLen+10)),
-			Err: ErrInvalidEncoding,
-		},
-		{
 			Name: "invalid payload encoding",
-			Data: []byte(validTS + strings.Repeat("A", encSigLen+encSigLen) + "$"),
+			Data: []byte(validTS + strings.Repeat("A", encHeaderLen) + "$"),
 			Err:  ErrInvalidEncoding,
 		},
 		{

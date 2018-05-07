@@ -28,10 +28,9 @@ import (
 
 const (
 	saltLen      = 8
-	encTsLen     = 11
-	encSaltLen   = 11
-	encSigLen    = 43
-	encHeaderLen = encTsLen + encSaltLen + encSigLen
+	issueLen     = 8
+	sigLen       = sha256.Size
+	headerLen    = issueLen + saltLen + sigLen
 	minSecretLen = 32
 )
 
@@ -47,6 +46,8 @@ var (
 
 	// ErrSignatureMismatch indicates the signature is not as expected.
 	ErrSignatureMismatch = errors.New("hmacsigner: signature mismatch")
+
+	encHeaderLen = base64.RawURLEncoding.EncodedLen(headerLen)
 )
 
 // Signer handles generating and parsing signed data.
@@ -76,18 +77,14 @@ func (s *Signer) salt(b []byte) {
 }
 
 func (s *Signer) sign(
+	header []byte,
 	payload []byte,
-	salt [saltLen]byte,
-	issue time.Time,
-) []byte {
-	var scratch [8]byte
-	binary.LittleEndian.PutUint64(scratch[:], uint64(issue.UnixNano()))
-
+	sig []byte,
+) {
 	mac := hmac.New(sha256.New, s.Secret)
-	mac.Write(scratch[:])
-	mac.Write(salt[:])
+	mac.Write(header)
 	mac.Write(payload)
-	return mac.Sum(nil)
+	mac.Sum(sig)
 }
 
 // Gen returns the signed payload.
@@ -95,25 +92,17 @@ func (s *Signer) Gen(payload []byte) []byte {
 	if len(s.Secret) < minSecretLen {
 		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
 	}
+
+	var header [headerLen]byte
+	issue := s.now()
+	binary.LittleEndian.PutUint64(header[:], uint64(issue.UnixNano()))
+	s.salt(header[issueLen : issueLen+saltLen])
+	s.sign(header[:issueLen+saltLen], payload, header[:issueLen+saltLen])
+
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
 	blob := make([]byte, payloadEncLen+encHeaderLen)
-	next := blob[:]
-	var scratch [8]byte
-
-	issue := s.now()
-	binary.LittleEndian.PutUint64(scratch[:], uint64(issue.UnixNano()))
-	base64.RawURLEncoding.Encode(next, scratch[:])
-	next = next[encTsLen:]
-
-	s.salt(scratch[:])
-	base64.RawURLEncoding.Encode(next, scratch[:])
-	next = next[encSaltLen:]
-
-	sig := s.sign(payload, scratch, issue)
-	base64.RawURLEncoding.Encode(next, sig)
-	next = next[encSigLen:]
-
-	base64.RawURLEncoding.Encode(next, payload)
+	base64.RawURLEncoding.Encode(blob, header[:])
+	base64.RawURLEncoding.Encode(blob[encHeaderLen:], payload)
 	return blob
 }
 
@@ -124,30 +113,18 @@ func (s *Signer) Parse(b []byte) ([]byte, error) {
 		return nil, ErrTooShort
 	}
 
-	var scratch [8]byte
-	_, err := base64.RawURLEncoding.Decode(scratch[:], b[:encTsLen])
+	var header [headerLen]byte
+	_, err := base64.RawURLEncoding.Decode(header[:], b[:encHeaderLen])
 	if err != nil {
 		return nil, ErrInvalidEncoding
 	}
-	ts := int64(binary.LittleEndian.Uint64(scratch[:]))
+	b = b[encHeaderLen:]
+
+	ts := int64(binary.LittleEndian.Uint64(header[:issueLen]))
 	issue := time.Unix(0, ts)
 	if issue.Add(s.TTL).Before(time.Now()) {
 		return nil, ErrTimestampExpired
 	}
-	b = b[encTsLen:]
-
-	_, err = base64.RawURLEncoding.Decode(scratch[:], b[:encSaltLen])
-	if err != nil {
-		return nil, ErrInvalidEncoding
-	}
-	b = b[encSaltLen:]
-
-	var sig [sha256.Size]byte
-	_, err = base64.RawURLEncoding.Decode(sig[:], b[:encSigLen])
-	if err != nil {
-		return nil, ErrInvalidEncoding
-	}
-	b = b[encSigLen:]
 
 	var payload []byte
 	if payloadLen := len(b); payloadLen > 0 {
@@ -159,7 +136,9 @@ func (s *Signer) Parse(b []byte) ([]byte, error) {
 		payload = payload[:n]
 	}
 
-	if !hmac.Equal(s.sign(payload, scratch, issue), sig[:]) {
+	var expectedSig [sha256.Size]byte
+	s.sign(header[:issueLen+saltLen], payload, expectedSig[:0])
+	if !hmac.Equal(expectedSig[:], header[issueLen+saltLen:]) {
 		return nil, ErrSignatureMismatch
 	}
 	return payload, nil
