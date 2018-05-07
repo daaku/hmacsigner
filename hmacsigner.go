@@ -95,7 +95,6 @@ func (s *Signer) Gen(payload []byte) []byte {
 	if len(s.Secret) < minSecretLen {
 		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
 	}
-	// TODO: ensure behavior with empty payload is acceptable
 	issue := s.now()
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
 	blob := make([]byte, payloadEncLen+encLen)
