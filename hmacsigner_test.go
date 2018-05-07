@@ -64,23 +64,23 @@ func TestErrors(t *testing.T) {
 		},
 		{
 			Name: "invalid ts encoding",
-			Data: []byte(strings.Repeat("$", encLen+10)),
+			Data: []byte(strings.Repeat("$", encHeaderLen+10)),
 			Err:  ErrInvalidEncoding,
 		},
 		{
 			Name: "ts expired",
-			Data: []byte("AAAAAAAAAAA" + strings.Repeat("$", encLen+10)),
+			Data: []byte("AAAAAAAAAAA" + strings.Repeat("$", encHeaderLen+10)),
 			Err:  ErrTimestampExpired,
 		},
 		{
 			Name: "invalid salt encoding",
-			Data: []byte(validTS + strings.Repeat("$", encLen+10)),
+			Data: []byte(validTS + strings.Repeat("$", encHeaderLen+10)),
 			Err:  ErrInvalidEncoding,
 		},
 		{
 			Name: "invalid sig encoding",
 			Data: []byte(validTS +
-				strings.Repeat("A", encSaltLen) + strings.Repeat("$", encLen+10)),
+				strings.Repeat("A", encSaltLen) + strings.Repeat("$", encHeaderLen+10)),
 			Err: ErrInvalidEncoding,
 		},
 		{
@@ -90,7 +90,7 @@ func TestErrors(t *testing.T) {
 		},
 		{
 			Name: "invalid signature",
-			Data: []byte(validTS + strings.Repeat("A", encLen+20)),
+			Data: []byte(validTS + strings.Repeat("A", encHeaderLen+20)),
 			Err:  ErrSignatureMismatch,
 		},
 	}

@@ -31,7 +31,7 @@ const (
 	encTsLen     = 11
 	encSaltLen   = 11
 	encSigLen    = 43
-	encLen       = encTsLen + encSaltLen + encSigLen
+	encHeaderLen = encTsLen + encSaltLen + encSigLen
 	minSecretLen = 32
 )
 
@@ -96,7 +96,7 @@ func (s *Signer) Gen(payload []byte) []byte {
 		panic(fmt.Sprintf("key less than %v bytes", minSecretLen))
 	}
 	payloadEncLen := base64.RawURLEncoding.EncodedLen(len(payload))
-	blob := make([]byte, payloadEncLen+encLen)
+	blob := make([]byte, payloadEncLen+encHeaderLen)
 	next := blob[:]
 	var scratch [8]byte
 
@@ -120,7 +120,7 @@ func (s *Signer) Gen(payload []byte) []byte {
 // Parse returns the original payload. It verifies the signature and
 // ensures the TTL is respected.
 func (s *Signer) Parse(b []byte) ([]byte, error) {
-	if len(b) < encLen {
+	if len(b) < encHeaderLen {
 		return nil, ErrTooShort
 	}
 
