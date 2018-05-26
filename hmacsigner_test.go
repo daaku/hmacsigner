@@ -99,7 +99,7 @@ func TestSaltDefault(t *testing.T) {
 }
 
 func TestMinSecretLen(t *testing.T) {
-	defer ensure.PanicDeepEqual(t, "key less than 32 bytes")
+	defer ensure.PanicDeepEqual(t, "secret less than 32 bytes")
 	(&Signer{}).Gen([]byte("foo"))
 }
 
